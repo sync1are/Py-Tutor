@@ -35,3 +35,4 @@ Thumbs.db
 dist/
 testing.py
 testing2.py
+.gitignore
