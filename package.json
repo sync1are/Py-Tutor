@@ -1,0 +1,36 @@
+{
+  "name": "pytutor",
+  "productName": "PyTutor",
+  "version": "1.0.0",
+  "description": "AI Python tutor with file detection and editing",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-packager . PyTutor --platform=win32 --arch=x64 --out=dist --overwrite"
+  },
+  "build": {
+    "appId": "com.pytutor.app",
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "verifyUpdateCodeSignature": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "mac": {
+      "identity": null
+    }
+  },
+  "devDependencies": {
+    "electron": "^34.0.0",
+    "electron-builder": "^26.8.1",
+    "electron-packager": "^17.1.2"
+  },
+  "dependencies": {
+    "node-pty": "^1.1.0"
+  }
+}

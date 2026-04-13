@@ -1,0 +1,1452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PyTutor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Syne:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:        #080808;
+  --s1:        #101010;
+  --s2:        #161616;
+  --s3:        #1e1e1e;
+  --s4:        #262626;
+  --border:    #222222;
+  --border2:   #2e2e2e;
+  --green:     #39d353;
+  --green-dim: rgba(57,211,83,0.08);
+  --green-mid: rgba(57,211,83,0.2);
+  --cyan:      #22d3ee;
+  --amber:     #f59e0b;
+  --red:       #f87171;
+  --text:      #d4d4d4;
+  --text-mid:  #888;
+  --text-dim:  #444;
+  --radius:    4px;
+  --font-ui:   'Syne', system-ui, sans-serif;
+  --font-code: 'JetBrains Mono', 'Consolas', monospace;
+}
+
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+html, body {
+  height: 100vh;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+/* ── Titlebar ────────────────────────────────────────────────── */
+.titlebar {
+  height: 38px;
+  background: var(--s1);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  -webkit-app-region: drag;
+  flex-shrink: 0;
+}
+.titlebar-logo {
+  font-family: var(--font-code);
+  font-size: 12px;
+  color: var(--text-mid);
+  letter-spacing: 0.04em;
+}
+.titlebar-logo b { color: var(--green); font-weight: 500; }
+.titlebar-tag {
+  margin-left: 10px;
+  font-size: 10px;
+  padding: 2px 6px;
+  border: 1px solid var(--border2);
+  background: var(--s1);
+  border-radius: 4px;
+  color: var(--red);
+  font-family: var(--font-code);
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+  transition: all 0.15s;
+}
+.titlebar-tag:hover { background: var(--s2); border-color: var(--border); }
+.win-controls {
+  margin-left: auto;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  -webkit-app-region: no-drag;
+}
+.wc {
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  transition: filter 0.15s;
+}
+.wc:hover { filter: brightness(1.3); }
+.wc-close { background: #ff5f57; }
+.wc-min   { background: #febc2e; }
+.wc-max   { background: #28c840; }
+.wc-top   { background: transparent; border: 1px solid var(--border2); color: var(--text-dim); font-size: 10px; width: auto; height: auto; border-radius: 4px; padding: 2px 6px; margin-right: 6px; }
+.wc-top.active { background: var(--green-dim); color: var(--green); border-color: var(--green-mid); }
+
+/* ── Layout ──────────────────────────────────────────────────── */
+.layout {
+  display: flex;
+  height: calc(100vh - 38px);
+  overflow: hidden;
+}
+
+/* ── Left Panel ──────────────────────────────────────────────── */
+.left {
+  width: 290px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--s1);
+  border-right: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.panel-head {
+  padding: 10px 14px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.pulse {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  flex-shrink: 0;
+  transition: background 0.3s, box-shadow 0.3s;
+}
+.pulse.on   { background: var(--green); box-shadow: 0 0 6px var(--green); }
+.pulse.spin { background: var(--amber); animation: blink 0.8s infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+.panel-head-actions { margin-left: auto; display: flex; gap: 4px; }
+.icon-btn {
+  background: none; border: none;
+  color: var(--text-dim); cursor: pointer; 
+  font-size: 13px; padding: 2px 4px;
+  border-radius: var(--radius);
+  transition: color 0.15s;
+  -webkit-app-region: no-drag;
+  line-height: 1;
+}
+.icon-btn:hover { color: var(--text); }
+
+/* File card */
+.file-card {
+  margin: 10px;
+  padding: 10px 12px;
+  background: var(--s2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  transition: border-color 0.15s;
+  flex-shrink: 0;
+}
+.file-card.detected { border-color: var(--green); background: var(--green-dim); }
+.file-card-name {
+  font-family: var(--font-code);
+  font-size: 12px;
+  color: var(--green);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 4px;
+}
+.file-card-path {
+  font-family: var(--font-code);
+  font-size: 10px;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 6px;
+}
+.file-card-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  padding: 2px 6px;
+  background: var(--s3);
+  border: 1px solid var(--border2);
+  border-radius: 2px;
+  color: var(--text-mid);
+  font-family: var(--font-code);
+}
+
+/* Empty state */
+.empty-file {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--text-dim);
+  padding: 20px;
+}
+.empty-file .em-icon { font-size: 28px; margin-bottom: 4px; }
+.empty-file .em-title { font-size: 12px; color: var(--text-mid); }
+.empty-file .em-sub { font-size: 11px; text-align: center; line-height: 1.5; }
+.browse-btn {
+  margin-top: 10px;
+  padding: 7px 14px;
+  background: var(--s2);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  color: var(--text-mid);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+  transition: all 0.15s;
+}
+.browse-btn:hover { border-color: var(--green); color: var(--green); }
+
+/* Preview */
+.preview-area {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 0 10px 10px;
+  gap: 6px;
+  min-height: 0;
+}
+.preview-label {
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+  padding-top: 4px;
+}
+.preview-code {
+  flex: 1;
+  overflow: auto;
+  background: var(--s2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  font-family: var(--font-code);
+  font-size: 10.5px;
+  line-height: 1.55;
+  color: var(--text-mid);
+  white-space: pre;
+  tab-size: 4;
+}
+
+/* Action buttons */
+.actions {
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.act-btn {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 10px;
+  background: var(--s2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-mid);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+  transition: all 0.15s;
+  text-align: left;
+  width: 100%;
+}
+.act-btn:hover:not(:disabled) {
+  border-color: var(--green);
+  color: var(--text);
+  background: var(--green-dim);
+}
+.act-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.act-btn .ico { font-size: 13px; width: 16px; text-align: center; }
+.act-btn .kc  { margin-left: auto; font-size: 10px; font-family: var(--font-code); color: var(--text-dim); }
+.act-sep { height: 1px; background: var(--border); margin: 2px 0; }
+
+/* ── Right Panel ─────────────────────────────────────────────── */
+.right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.chat-header {
+  padding: 7px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--s1);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.header-label { font-size: 10px; color: var(--text-dim); letter-spacing: 0.06em; text-transform: uppercase; }
+.model-sel {
+  background: var(--s2);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: var(--font-code);
+  font-size: 11px;
+  padding: 3px 7px;
+  cursor: pointer;
+  outline: none;
+  -webkit-app-region: no-drag;
+  transition: border-color 0.15s;
+}
+.model-sel:focus { border-color: var(--green); }
+.model-sel option { background: var(--s2); }
+.clear-chat-btn {
+  margin-left: auto;
+  background: none; border: none;
+  color: var(--text-dim);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+  padding: 3px 6px;
+  border-radius: var(--radius);
+  transition: color 0.15s;
+}
+.clear-chat-btn:hover { color: var(--red); }
+
+/* Messages */
+.messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.messages::-webkit-scrollbar { width: 3px; }
+.messages::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+.msg {
+  display: flex;
+  gap: 12px;
+  animation: msgIn 0.18s ease;
+}
+.msg.user { flex-direction: row-reverse; }
+@keyframes msgIn {
+  from { opacity:0; transform: translateY(6px); }
+  to   { opacity:1; transform: translateY(0); }
+}
+
+.avatar {
+  width: 26px; height: 26px;
+  border-radius: var(--radius);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; flex-shrink: 0;
+  font-family: var(--font-code);
+  font-weight: 600;
+  margin-top: 2px;
+}
+.avatar.av-tutor { background: var(--green-dim); border: 1px solid var(--green-mid); color: var(--green); }
+.avatar.av-user  { background: var(--s3); border: 1px solid var(--border2); color: var(--text-mid); }
+
+.bubble {
+  max-width: 78%;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  line-height: 1.65;
+  word-break: break-word;
+}
+.msg.tutor .bubble {
+  background: var(--s1);
+  border: 1px solid var(--border);
+  border-top-left-radius: 0;
+}
+.msg.user .bubble {
+  background: var(--green-dim);
+  border: 1px solid var(--green-mid);
+  border-top-right-radius: 0;
+  color: var(--text);
+  font-size: 13px;
+}
+
+/* Markdown inside bubbles */
+.bubble p { margin-bottom: 8px; }
+.bubble p:last-child { margin-bottom: 0; }
+.bubble code {
+  font-family: var(--font-code);
+  font-size: 11.5px;
+  background: var(--s3);
+  border: 1px solid var(--border2);
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: var(--amber);
+}
+.bubble pre {
+  background: var(--s2);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  overflow-x: auto;
+  margin: 8px 0;
+  position: relative;
+}
+.bubble pre code {
+  background: none; border: none; padding: 0;
+  color: var(--text); font-size: 11.5px;
+  line-height: 1.6;
+}
+.copy-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: var(--s3);
+  border: 1px solid var(--border2);
+  color: var(--text-dim);
+  border-radius: var(--radius);
+  padding: 2px 6px;
+  font-size: 10px;
+  cursor: pointer;
+  opacity: 0;
+  transition: all 0.2s;
+  font-family: var(--font-ui);
+}
+.bubble pre:hover .copy-btn {
+  opacity: 1;
+}
+.copy-btn:hover {
+  background: var(--s2);
+  color: var(--text);
+  border-color: var(--green);
+}
+.bubble strong { color: var(--green); font-weight: 600; }
+.bubble em { color: var(--cyan); font-style: normal; font-weight: 500; }
+.bubble h1,.bubble h2,.bubble h3 {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--green);
+  margin: 12px 0 6px;
+}
+.bubble ol,.bubble ul { padding-left: 18px; margin: 6px 0; }
+.bubble li { margin: 3px 0; }
+.bubble blockquote {
+  border-left: 2px solid var(--green-mid);
+  padding-left: 10px;
+  color: var(--text-mid);
+  margin: 6px 0;
+}
+.bubble hr { border: none; border-top: 1px solid var(--border2); margin: 8px 0; }
+
+/* Thinking dots */
+.thinking { display: flex; gap: 5px; align-items: center; padding: 4px 0; }
+.thinking span {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--green);
+  animation: tdot 1.2s infinite;
+}
+.thinking span:nth-child(2) { animation-delay: 0.2s; }
+.thinking span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes tdot {
+  0%,60%,100% { transform:translateY(0); opacity:0.5; }
+  30% { transform:translateY(-5px); opacity:1; }
+}
+
+/* Input area */
+.input-wrap {
+  padding: 14px 20px;
+  border-top: 1px solid var(--border);
+  background: var(--s1);
+  flex-shrink: 0;
+}
+.input-row { display: flex; gap: 8px; align-items: flex-end; }
+.input-box {
+  flex: 1;
+  background: var(--s2);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  padding: 9px 13px;
+  resize: none;
+  outline: none;
+  min-height: 40px;
+  max-height: 110px;
+  line-height: 1.5;
+  transition: border-color 0.15s;
+  -webkit-app-region: no-drag;
+}
+.input-box:focus { border-color: var(--green); }
+.input-box::placeholder { color: var(--text-dim); }
+.send-btn {
+  width: 40px; height: 40px;
+  background: var(--green);
+  border: none; border-radius: var(--radius);
+  color: #000; font-size: 16px;
+  font-weight: 700;
+  cursor: pointer; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: opacity 0.15s;
+  -webkit-app-region: no-drag;
+  line-height: 1;
+}
+.send-btn:hover:not(:disabled) { opacity: 0.85; }
+.send-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* Integrated Terminal */
+.terminal-pane {
+  height: 200px;
+  border-top: 1px solid var(--border);
+  background: #000;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+.term-header {
+  padding: 4px 10px;
+  background: var(--s2);
+  border-bottom: 1px solid var(--border);
+  font-size: 10px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+.term-header:hover {
+  background: var(--s3);
+}
+.term-toggle-icon {
+  margin-right: 6px;
+  font-size: 12px;
+  transition: transform 0.2s;
+  display: inline-block;
+}
+.terminal-pane.collapsed .term-toggle-icon {
+  transform: rotate(-90deg);
+}
+.terminal-pane.collapsed .term-output,
+.terminal-pane.collapsed .term-input-row {
+  display: none !important;
+}
+.terminal-pane.collapsed {
+  height: 25px !important;
+}
+.term-actions { margin-left: auto; }
+.term-stop-btn {
+  background: none; border: none; color: var(--red); cursor: pointer; font-size: 11px;
+}
+.term-output {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px;
+  font-family: var(--font-code);
+  font-size: 12px;
+  color: #e0e0e0;
+  white-space: pre-wrap;
+  word-break: break-all;
+  line-height: 1.4;
+}
+.term-input-row {
+  display: flex;
+  align-items: center;
+  padding: 0 10px 10px;
+  font-family: var(--font-code);
+  font-size: 12px;
+  color: var(--green);
+}
+.term-prompt { margin-right: 6px; }
+.term-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #fff;
+  font-family: var(--font-code);
+  font-size: 12px;
+}
+
+/* Edit modal */
+.overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.75);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.18s;
+}
+.overlay.open { opacity: 1; pointer-events: all; }
+.modal {
+  background: var(--s1);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  padding: 20px;
+  width: 420px;
+  transform: scale(0.97);
+  transition: transform 0.18s;
+}
+.overlay.open .modal { transform: scale(1); }
+.modal-title {
+  font-size: 13px; font-weight: 600;
+  color: var(--green); margin-bottom: 12px;
+  font-family: var(--font-code);
+}
+.modal-hint { font-size: 11px; color: var(--text-dim); margin-bottom: 10px; }
+.modal-input {
+  width: 100%;
+  background: var(--s2); border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  color: var(--text); font-family: var(--font-ui); font-size: 13px;
+  padding: 9px 12px; outline: none; margin-bottom: 14px;
+  -webkit-app-region: no-drag;
+  transition: border-color 0.15s;
+}
+.modal-input:focus { border-color: var(--green); }
+.modal-row { display: flex; gap: 8px; justify-content: flex-end; }
+.modal-btn {
+  padding: 7px 16px; border-radius: var(--radius);
+  font-size: 12px; cursor: pointer; border: none;
+  font-family: var(--font-ui);
+  transition: all 0.15s;
+}
+.modal-btn.cancel { background: var(--s2); color: var(--text-dim); border: 1px solid var(--border2); }
+.modal-btn.cancel:hover { border-color: var(--border2); color: var(--text); }
+.modal-btn.confirm { background: var(--green); color: #000; font-weight: 600; }
+.modal-btn.confirm:hover { opacity: 0.85; }
+
+/* Settings modal */
+.settings-group { margin-bottom: 12px; }
+.settings-label { font-size: 11px; color: var(--text-dim); margin-bottom: 4px; display: block; font-weight: 600; text-transform: uppercase;}
+.settings-select {
+  width: 100%; background: var(--s2); border: 1px solid var(--border2);
+  border-radius: var(--radius); color: var(--text); padding: 8px;
+  outline: none; font-family: var(--font-ui); font-size: 13px;
+}
+.settings-select option { background: var(--s2); }
+.settings-input {
+  width: 100%; background: var(--s2); border: 1px solid var(--border2);
+  border-radius: var(--radius); color: var(--text); padding: 8px;
+  outline: none; font-family: var(--font-ui); font-size: 13px;
+}
+.settings-input:focus { border-color: var(--green); }
+
+/* Toast */
+.toast {
+  position: fixed; bottom: 70px; left: 50%;
+  transform: translateX(-50%) translateY(12px);
+  background: var(--s2); border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  padding: 8px 16px; font-size: 11px;
+  font-family: var(--font-code);
+  color: var(--text-mid); opacity: 0;
+  transition: all 0.2s; z-index: 200;
+  white-space: nowrap; pointer-events: none;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast.ok  { border-color: var(--green-mid); color: var(--green); }
+.toast.err { border-color: rgba(248,113,113,0.3); color: var(--red); }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 3px; height: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<!-- Titlebar -->
+<div class="titlebar">
+  <span class="titlebar-logo">🐍 <b>PyTutor</b></span>
+  <button class="titlebar-tag" id="btn-server">🔴 copilot-api</button>
+  <div class="win-controls">
+    <button class="wc wc-top" id="btn-ontop" title="Always on Top">📌</button>
+    <button class="wc wc-min"   onclick="window.pytutor.minimize()"></button>
+    <button class="wc wc-max"   onclick="window.pytutor.maximize()"></button>
+    <button class="wc wc-close" onclick="window.pytutor.close()"></button>
+  </div>
+</div>
+
+<div class="layout">
+
+  <!-- Left panel -->
+  <div class="left">
+    <div class="panel-head">
+      <div class="pulse" id="dot"></div>
+      Active File
+      <div class="panel-head-actions">
+        <button class="icon-btn" id="refresh-btn" title="Refresh detection">↻</button>
+      </div>
+    </div>
+
+    <!-- File info (shown when file detected) -->
+    <div id="file-section" style="display:none; flex-direction:column; flex:1; overflow:hidden; min-height:0;">
+      <div class="file-card detected" id="file-card">
+        <div class="file-card-name" id="fc-name">—</div>
+        <div class="file-card-path" id="fc-path">—</div>
+        <div class="file-card-badge">
+          <span id="fc-editor">Unknown</span>
+        </div>
+      </div>
+      <div class="preview-area">
+        <div class="preview-label">preview</div>
+        <div class="preview-code" id="preview-code"></div>
+      </div>
+    </div>
+
+    <!-- Empty state -->
+    <div class="empty-file" id="empty-state">
+      <div class="em-icon">📡</div>
+      <div class="em-title">Scanning for open files...</div>
+      <div class="em-sub">Open a .py file in VS Code, Cursor, Notepad++, or any editor</div>
+      <button class="browse-btn" id="browse-top">Browse manually</button>
+    </div>
+
+    <!-- Action buttons -->
+    <div class="actions">
+      <button class="act-btn" id="btn-comment" disabled>
+        <span class="ico">💬</span> Add Comments
+        <span class="kc">/comment</span>
+      </button>
+      <button class="act-btn" id="btn-optimize" disabled>
+        <span class="ico">⚡</span> Optimize Code
+        <span class="kc">/optimize</span>
+      </button>
+      <button class="act-btn" id="btn-edit" disabled>
+        <span class="ico">✏️</span> Custom Edit
+        <span class="kc">/edit</span>
+      </button>
+      <button class="act-btn" id="btn-run" disabled>
+        <span class="ico">▶</span> Run Code
+      </button>
+      <div class="act-sep"></div>
+      <button class="act-btn" id="btn-browse">
+        <span class="ico">📁</span> Load File
+      </button>
+      <div class="act-sep"></div>
+      <button class="act-btn" id="btn-settings">
+        <span class="ico">⚙️</span> Settings
+      </button>
+    </div>
+  </div>
+
+  <!-- Right panel -->
+  <div class="right">
+    <div class="chat-header">
+      <span class="header-label">Model</span>
+      <select class="model-sel" id="model-sel">
+        <!-- populated dynamically -->
+      </select>
+      <button class="clear-chat-btn" id="clear-btn">clear chat</button>
+    </div>
+
+    <div class="messages" id="messages">
+      <!-- Welcome message injected by JS -->
+    </div>
+
+    <div class="input-wrap">
+      <div class="input-row">
+        <textarea class="input-box" id="input-box"
+          placeholder="Ask anything about Python... (Enter to send, Shift+Enter for newline)"
+          rows="1"></textarea>
+        <button class="send-btn" id="send-btn">↑</button>
+      </div>
+    </div>
+
+    <!-- Integrated Terminal -->
+    <div class="terminal-pane" id="terminal-pane" style="display: flex;">
+      <div class="term-header" id="term-header">
+        <span class="term-toggle-icon">▼</span>
+        <span>Terminal</span>
+        <div class="term-actions">
+          <button class="term-stop-btn" id="term-stop-btn">⏹ Stop</button>
+        </div>
+      </div>
+      <div class="term-output" id="term-output"></div>
+      <div class="term-input-row" id="term-input-row" style="display: none;">
+        <span class="term-prompt">&gt;</span>
+        <input type="text" class="term-input" id="term-input" autocomplete="off" spellcheck="false" />
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Custom Edit Modal -->
+<div class="overlay" id="edit-overlay">
+  <div class="modal">
+    <div class="modal-title">// CUSTOM EDIT</div>
+    <div class="modal-hint">Tell the tutor what to change in your file</div>
+    <input class="modal-input" id="edit-input"
+      placeholder="e.g. add error handling, add type hints, refactor into functions..." />
+    <div class="modal-row">
+      <button class="modal-btn cancel" id="modal-cancel">Cancel</button>
+      <button class="modal-btn confirm" id="modal-confirm">Apply ↵</button>
+    </div>
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<div class="overlay" id="settings-overlay">
+  <div class="modal">
+    <div class="modal-title">⚙️ SETTINGS</div>
+
+    <div class="settings-group">
+      <label class="settings-label">AI Provider</label>
+      <select class="settings-select" id="provider-sel">
+        <option value="copilot">Copilot API (Local)</option>
+        <option value="ollama">Ollama (Local)</option>
+        <option value="anthropic">Anthropic</option>
+        <option value="openai">OpenAI</option>
+      </select>
+    </div>
+
+    <div class="settings-group" id="group-ollama" style="display:none;">
+      <label class="settings-label">Ollama Base URL</label>
+      <input type="text" class="settings-input" id="ollama-url" placeholder="http://localhost:11434" value="http://localhost:11434">
+    </div>
+
+    <div class="settings-group" id="group-anthropic" style="display:none;">
+      <label class="settings-label">Anthropic API Key</label>
+      <input type="password" class="settings-input" id="anthropic-key" placeholder="sk-ant-...">
+    </div>
+
+    <div class="settings-group" id="group-openai" style="display:none;">
+      <label class="settings-label">OpenAI API Key</label>
+      <input type="password" class="settings-input" id="openai-key" placeholder="sk-...">
+    </div>
+
+    <div class="modal-row" style="margin-top: 18px;">
+      <button class="modal-btn cancel" id="settings-cancel">Cancel</button>
+      <button class="modal-btn confirm" id="settings-save">Save & Reload</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
+<script>
+// ── Settings State ────────────────────────────────────────────────────────────
+let appSettings = {};
+
+async function loadAppSettings() {
+  try {
+    appSettings = await window.pytutor.getSettings();
+  } catch (e) {}
+
+  updateSettingsUI();
+  await refreshModels();
+}
+
+function updateSettingsUI() {
+  if (!appSettings) return;
+  const { provider, ollamaUrl, anthropicKey, openaiKey } = appSettings;
+
+  $('provider-sel').value = provider || 'copilot';
+  $('ollama-url').value = ollamaUrl || 'http://localhost:11434';
+  $('anthropic-key').value = anthropicKey || '';
+  $('openai-key').value = openaiKey || '';
+
+  // Show/Hide fields based on provider
+  $('group-ollama').style.display = provider === 'ollama' ? 'block' : 'none';
+  $('group-anthropic').style.display = provider === 'anthropic' ? 'block' : 'none';
+  $('group-openai').style.display = provider === 'openai' ? 'block' : 'none';
+
+  // Titlebar button
+  btnServer.style.display = provider === 'copilot' ? 'block' : 'none';
+}
+
+async function refreshModels() {
+  const provider = appSettings.provider || 'copilot';
+  try {
+    const models = await window.pytutor.fetchModels(provider);
+    modelSel.innerHTML = ''; // clear existing
+    models.forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m;
+      opt.textContent = m;
+      modelSel.appendChild(opt);
+    });
+
+    // Try to restore previously selected model for this provider if it exists
+    const savedModel = localStorage.getItem(`pytutor_model_${provider}`);
+    if (savedModel && models.includes(savedModel)) {
+      modelSel.value = savedModel;
+    }
+  } catch (e) {
+    console.error("Failed to fetch models:", e);
+  }
+}
+
+// ── Config ────────────────────────────────────────────────────────────────────
+marked.setOptions({ breaks: true, gfm: true });
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let currentFile  = null;   // { path, name, content, editor, folder }
+let chatHistory  = [];
+let busy         = false;
+let detectTimer  = null;
+
+// ── DOM ───────────────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const msgList  = $('messages');
+const inputBox = $('input-box');
+const sendBtn  = $('send-btn');
+const dot      = $('dot');
+const modelSel = $('model-sel');
+
+// Terminal DOM elements
+const termPane   = $('terminal-pane');
+const termOutput = $('term-output');
+const termInput  = $('term-input');
+const termInputRow = $('term-input-row');
+const termStopBtn = $('term-stop-btn');
+const termHeader = $('term-header');
+
+// Terminal toggle logic
+termHeader.addEventListener('click', (e) => {
+  if (e.target === termStopBtn) return; // don't toggle if stop button is clicked
+  termPane.classList.toggle('collapsed');
+});
+
+let termContentText = ''; // Accumulate output to send to AI later if needed
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function toast(msg, type='') {
+  const el = $('toast');
+  el.textContent = msg;
+  el.className = `toast ${type} show`;
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.className = 'toast', 2800);
+}
+
+// ── File display ──────────────────────────────────────────────────────────────
+function setFile(info) {
+  currentFile = info;
+  const hasFile = !!info;
+
+  $('file-section').style.display  = hasFile ? 'flex' : 'none';
+  $('empty-state').style.display   = hasFile ? 'none' : 'flex';
+  $('btn-comment').disabled  = !hasFile;
+  $('btn-optimize').disabled = !hasFile;
+  $('btn-edit').disabled     = !hasFile;
+  $('btn-run').disabled      = !hasFile;
+  dot.className = hasFile ? 'pulse on' : 'pulse';
+
+  if (!info) return;
+
+  $('fc-name').textContent   = info.name;
+  $('fc-path').textContent   = info.path || info.folder || '(path not resolved)';
+  $('fc-editor').textContent = `📝 ${info.editor || 'Unknown'}`;
+
+  if (info.content) {
+    const preview = info.content.split('\n').slice(0, 60).join('\n');
+    $('preview-code').textContent = preview;
+  } else {
+    $('preview-code').textContent = '(Content not available — file may need manual load)';
+  }
+}
+
+// ── Detection ─────────────────────────────────────────────────────────────────
+async function detect() {
+  dot.className = 'pulse spin';
+  try {
+    const result = await window.pytutor.detectFile();
+    if (result) {
+      if (!currentFile || currentFile.path !== result.path || currentFile.name !== result.name) {
+        // New file detected
+        setFile(result);
+        if (result.path) {
+          toast(`📂 ${result.name} (${result.editor})`, 'ok');
+        } else {
+          // Detected name but no full path — prompt user
+          toast(`Detected "${result.name}" in ${result.editor} — click Load File to resolve path`);
+        }
+      } else {
+        // Same file — refresh content
+        if (result.path) {
+          const fresh = await window.pytutor.readFile(result.path);
+          if (fresh && fresh !== currentFile.content) {
+            currentFile.content = fresh;
+            $('preview-code').textContent = fresh.split('\n').slice(0, 60).join('\n');
+          }
+        }
+        dot.className = 'pulse on';
+      }
+    } else {
+      dot.className = currentFile ? 'pulse on' : 'pulse';
+    }
+  } catch(e) {
+    dot.className = currentFile ? 'pulse on' : 'pulse';
+  }
+}
+
+// Run once immediately then every 3s
+detect();
+detectTimer = setInterval(detect, 3000);
+$('refresh-btn').addEventListener('click', detect);
+
+// ── Manual browse ─────────────────────────────────────────────────────────────
+async function browse() {
+  const result = await window.pytutor.openFileDialog();
+  if (result) {
+    setFile(result);
+    toast(`📂 Loaded: ${result.name}`, 'ok');
+  }
+}
+$('browse-top').addEventListener('click', browse);
+$('btn-browse').addEventListener('click', browse);
+
+// ── Messages ──────────────────────────────────────────────────────────────────
+function addMsg(role, content, asHTML=false) {
+  const isUser = role === 'user';
+  const wrap = document.createElement('div');
+  wrap.className = `msg ${isUser ? 'user' : 'tutor'}`;
+
+  const av = document.createElement('div');
+  av.className = `avatar ${isUser ? 'av-user' : 'av-tutor'}`;
+  av.textContent = isUser ? 'ME' : 'AI';
+
+  const bub = document.createElement('div');
+  bub.className = 'bubble';
+
+  if (asHTML)     bub.innerHTML = content;
+  else if (isUser) bub.textContent = content;
+  else {
+    bub.innerHTML = marked.parse(content);
+    // Add copy buttons to code blocks
+    const preBlocks = bub.querySelectorAll('pre');
+    preBlocks.forEach(pre => {
+      const btn = document.createElement('button');
+      btn.className = 'copy-btn';
+      btn.textContent = 'Copy';
+      btn.onclick = () => {
+        const code = pre.querySelector('code');
+        if (code) {
+          navigator.clipboard.writeText(code.innerText);
+          btn.textContent = 'Copied!';
+          setTimeout(() => btn.textContent = 'Copy', 2000);
+        }
+      };
+      pre.appendChild(btn);
+    });
+  }
+
+  wrap.appendChild(av);
+  wrap.appendChild(bub);
+  msgList.appendChild(wrap);
+  msgList.scrollTop = msgList.scrollHeight;
+  return bub;
+}
+
+function showThinking() {
+  const wrap = document.createElement('div');
+  wrap.id = 'thinking-wrap';
+  wrap.className = 'msg tutor';
+  wrap.innerHTML = `
+    <div class="avatar av-tutor">AI</div>
+    <div class="bubble"><div class="thinking"><span></span><span></span><span></span></div></div>
+  `;
+  msgList.appendChild(wrap);
+  msgList.scrollTop = msgList.scrollHeight;
+}
+function hideThinking() {
+  const el = $('thinking-wrap');
+  if (el) el.remove();
+}
+
+// Welcome message
+function renderWelcomeMessage() {
+  addMsg('tutor',
+    `**Hey! I'm PyTutor.**\n\n` +
+    `I'm scanning for open Python files in VS Code, Cursor, Notepad++, and other editors — ` +
+    `I'll auto-detect what you're working on every 3 seconds.\n\n` +
+    `Once a file is loaded, use the buttons on the left to:\n` +
+    `- **Add Comments** — annotate every line for easy understanding\n` +
+    `- **Optimize Code** — get a cleaner version with a full explanation\n` +
+    `- **Custom Edit** — tell me exactly what to change\n` +
+    `- **Run Code** — execute your file and I'll explain the output\n\n` +
+    `Or just ask me any Python question below!`
+  );
+}
+
+// ── Persistence (Memory) ──────────────────────────────────────────────────────
+function saveChat() {
+  localStorage.setItem('pytutor_chat', JSON.stringify(chatHistory));
+}
+
+function loadChat() {
+  const saved = localStorage.getItem('pytutor_chat');
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      if (parsed.length > 0) {
+        chatHistory = parsed;
+        chatHistory.forEach(msg => {
+          let displayContent = msg.content;
+          if (msg.role === 'user') {
+            // Strip out the injected file content block for cleaner UI rendering
+            if (displayContent.includes('```python\n')) {
+              displayContent = displayContent.replace(/\[My current file:.*?\]\n```python\n[\s\S]*?\n```\n\nQuestion: /g, '');
+            }
+            if (displayContent.includes('Here is the output:]')) {
+              displayContent = 'Ran the code. Asking tutor to explain output...';
+            }
+            if (displayContent.includes('Here is the terminal output:]')) {
+              displayContent = 'Ran code in terminal. Asking tutor to explain output...';
+            }
+          }
+          addMsg(msg.role === 'assistant' ? 'tutor' : 'user', displayContent);
+        });
+        return;
+      }
+    } catch(e) {}
+  }
+  // If empty or failed
+  renderWelcomeMessage();
+}
+
+// Load selected model from memory
+modelSel.addEventListener('change', () => {
+  const provider = appSettings.provider || 'copilot';
+  localStorage.setItem(`pytutor_model_${provider}`, modelSel.value);
+});
+
+// Initialize app
+loadChat();
+loadAppSettings();
+
+
+// ── Send message ──────────────────────────────────────────────────────────────
+async function send() {
+  const text = inputBox.value.trim();
+  if (!text || busy) return;
+
+  inputBox.value = '';
+  inputBox.style.height = 'auto';
+  busy = true;
+  sendBtn.disabled = true;
+
+  addMsg('user', text);
+
+  let msgContent = text;
+  if (currentFile && currentFile.content) {
+    msgContent =
+      `[My current file: ${currentFile.name}]\n` +
+      '```python\n' + currentFile.content + '\n```\n\n' +
+      `Question: ${text}`;
+  }
+
+  chatHistory.push({ role: 'user', content: msgContent });
+  showThinking();
+
+  try {
+    const reply = await window.pytutor.chat(chatHistory, modelSel.value);
+    hideThinking();
+    chatHistory.push({ role: 'assistant', content: reply });
+    addMsg('tutor', reply);
+    saveChat();
+  } catch(e) {
+    hideThinking();
+    const provider = appSettings.provider || 'copilot';
+    let helpText = '';
+    if (provider === 'copilot') helpText = '\n\nMake sure `copilot-api start` is running (click the titlebar button).';
+    if (provider === 'ollama') helpText = '\n\nMake sure Ollama is running locally.';
+
+    addMsg('tutor', `❌ **Error:** ${e.message}${helpText}`);
+  }
+
+  busy = false;
+  sendBtn.disabled = false;
+  inputBox.focus();
+}
+
+sendBtn.addEventListener('click', send);
+inputBox.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+});
+inputBox.addEventListener('input', () => {
+  inputBox.style.height = 'auto';
+  inputBox.style.height = Math.min(inputBox.scrollHeight, 110) + 'px';
+});
+
+$('clear-btn').addEventListener('click', () => {
+  chatHistory = [];
+  saveChat();
+  msgList.innerHTML = '';
+  addMsg('tutor', 'Chat cleared. What do you want to learn?');
+});
+
+// ── Edit operations ───────────────────────────────────────────────────────────
+async function runEdit(type, instruction='') {
+  if (!currentFile || !currentFile.content || busy) return;
+  busy = true;
+  $('btn-comment').disabled = $('btn-optimize').disabled = $('btn-edit').disabled = $('btn-run').disabled = true;
+
+  const labels = {
+    comment:  '💬 Adding explanatory comments...',
+    optimize: '⚡ Rewriting for efficiency...',
+    edit:     `✏️ Applying: "${instruction}"...`
+  };
+
+  showThinking();
+
+  try {
+    const result = await window.pytutor.aiEdit({
+      type,
+      instruction,
+      filename: currentFile.name,
+      content:  currentFile.content,
+      filepath: currentFile.path,
+      model:    modelSel.value,
+    });
+
+    hideThinking();
+
+    // Update local content
+    currentFile.content = result.newContent;
+    $('preview-code').textContent = result.newContent.split('\n').slice(0, 60).join('\n');
+
+    const doneLabels = { comment: '✅ Comments Added', optimize: '✅ Code Optimized', edit: '✅ Edit Applied' };
+    addMsg('tutor',
+      `**${doneLabels[type]}** — \`${currentFile.name}\` updated (backup saved).\n\n${result.explanation}`
+    );
+    toast(doneLabels[type], 'ok');
+
+  } catch(e) {
+    hideThinking();
+    addMsg('tutor', `❌ **Edit failed:** ${e.message}`);
+    toast('Edit failed', 'err');
+  }
+
+  busy = false;
+  if (currentFile) {
+    $('btn-comment').disabled = $('btn-optimize').disabled = $('btn-edit').disabled = $('btn-run').disabled = false;
+  }
+}
+
+$('btn-comment').addEventListener('click', () => runEdit('comment'));
+$('btn-optimize').addEventListener('click', () => runEdit('optimize'));
+
+// Run code logic
+$('btn-run').addEventListener('click', async () => {
+  if (!currentFile || !currentFile.path || busy) return;
+  busy = true;
+  $('btn-comment').disabled = $('btn-optimize').disabled = $('btn-edit').disabled = $('btn-run').disabled = true;
+
+  toast('Starting terminal...', 'ok');
+
+  // Show terminal UI
+  termPane.classList.remove('collapsed');
+  termInputRow.style.display = 'flex';
+  termOutput.textContent = '';
+  termContentText = '';
+  termInput.value = '';
+
+  // Append a small header
+  termOutput.textContent += `[Running: ${currentFile.name}]\n\n`;
+
+  addMsg('user', `I am running my code in the terminal now.`);
+
+  const success = await window.pytutor.startPython(currentFile.path);
+  if (!success) {
+    termOutput.textContent += `\n❌ Failed to start Python process.`;
+    termInputRow.style.display = 'none';
+    resetButtons();
+  }
+  termInput.focus();
+});
+
+function resetButtons() {
+  busy = false;
+  $('btn-comment').disabled = $('btn-optimize').disabled = $('btn-edit').disabled = $('btn-run').disabled = false;
+}
+
+// Terminal Events
+window.pytutor.onPythonOutput((data) => {
+  termOutput.textContent += data;
+  termContentText += data;
+  termOutput.scrollTop = termOutput.scrollHeight;
+});
+
+window.pytutor.onPythonExit((code) => {
+  termOutput.textContent += `\n[Process exited with code ${code}]`;
+  termContentText += `\n[Process exited with code ${code}]`;
+  termOutput.scrollTop = termOutput.scrollHeight;
+  termInputRow.style.display = 'none';
+  resetButtons();
+
+  // Once finished, ask the AI to explain the output
+  if (termContentText.trim().length > 0) {
+    const userMsg = `[I ran the code in \`${currentFile.name}\` and it finished. Here is the terminal output:]\n\n\`\`\`text\n${termContentText}\n\`\`\`\n\nCan you explain this output or any errors to me?`;
+    chatHistory.push({ role: 'user', content: userMsg });
+
+    showThinking();
+    window.pytutor.chat(chatHistory, modelSel.value).then(reply => {
+      hideThinking();
+      chatHistory.push({ role: 'assistant', content: reply });
+      addMsg('tutor', reply);
+      saveChat();
+    }).catch(e => {
+      hideThinking();
+      addMsg('tutor', `❌ **Failed to explain output:** ${e.message}`);
+    });
+  }
+});
+
+// Handle terminal input
+termInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    const data = termInput.value;
+    termInput.value = '';
+    termOutput.textContent += data + '\n';
+    termContentText += data + '\n';
+    termOutput.scrollTop = termOutput.scrollHeight;
+    window.pytutor.sendPythonInput(data);
+  }
+});
+
+termStopBtn.addEventListener('click', () => {
+  window.pytutor.stopPython();
+  termInputRow.style.display = 'none';
+  resetButtons();
+});
+
+// Custom edit modal
+$('btn-edit').addEventListener('click', () => {
+  $('edit-overlay').classList.add('open');
+  $('edit-input').value = '';
+  setTimeout(() => $('edit-input').focus(), 50);
+});
+$('modal-cancel').addEventListener('click', () => $('edit-overlay').classList.remove('open'));
+$('modal-confirm').addEventListener('click', () => {
+  const instr = $('edit-input').value.trim();
+  if (!instr) return;
+  $('edit-overlay').classList.remove('open');
+  runEdit('edit', instr);
+});
+$('edit-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); $('modal-confirm').click(); }
+  if (e.key === 'Escape') $('edit-overlay').classList.remove('open');
+});
+$('edit-overlay').addEventListener('click', e => {
+  if (e.target === $('edit-overlay')) $('edit-overlay').classList.remove('open');
+});
+
+// Settings Modal Logic
+$('btn-settings').addEventListener('click', async () => {
+  try {
+    appSettings = await window.pytutor.getSettings();
+    updateSettingsUI();
+  } catch (e) {
+    console.error(e);
+  }
+  $('settings-overlay').classList.add('open');
+});
+
+$('settings-cancel').addEventListener('click', () => {
+  $('settings-overlay').classList.remove('open');
+});
+
+$('provider-sel').addEventListener('change', (e) => {
+  appSettings.provider = e.target.value;
+  updateSettingsUI();
+});
+
+$('settings-save').addEventListener('click', async () => {
+  appSettings.provider = $('provider-sel').value;
+  appSettings.ollamaUrl = $('ollama-url').value;
+  appSettings.anthropicKey = $('anthropic-key').value;
+  appSettings.openaiKey = $('openai-key').value;
+
+  try {
+    await window.pytutor.saveSettings(appSettings);
+    toast('Settings Saved', 'ok');
+    $('settings-overlay').classList.remove('open');
+    await refreshModels();
+  } catch (e) {
+    toast('Failed to save settings', 'err');
+    console.error(e);
+  }
+});
+
+// Copilot API Server Toggle
+let serverRunning = false;
+const btnServer = $('btn-server');
+
+async function checkServerStatus() {
+  const isRunning = await window.pytutor.checkServer();
+  updateServerUI(isRunning);
+}
+
+// Check immediately and then every 5 seconds
+checkServerStatus();
+setInterval(checkServerStatus, 5000);
+
+btnServer.addEventListener('click', async () => {
+  btnServer.style.opacity = '0.5';
+  const isRunning = await window.pytutor.toggleServer();
+  updateServerUI(isRunning);
+  btnServer.style.opacity = '1';
+});
+
+window.pytutor.onServerStatus((status) => {
+  updateServerUI(status);
+});
+
+function updateServerUI(isRunning) {
+  serverRunning = isRunning;
+  if (isRunning) {
+    btnServer.style.borderColor = 'var(--green)';
+    btnServer.style.color = 'var(--green)';
+    btnServer.textContent = '🟢 copilot-api';
+  } else {
+    btnServer.style.borderColor = 'var(--border2)';
+    btnServer.style.color = 'var(--red)';
+    btnServer.textContent = '🔴 copilot-api';
+  }
+}
+
+// Always on top
+$('btn-ontop').addEventListener('click', async () => {
+  const isTop = await window.pytutor.toggleTop();
+  if (isTop) {
+    $('btn-ontop').classList.add('active');
+    toast('Always on top: ON');
+  } else {
+    $('btn-ontop').classList.remove('active');
+    toast('Always on top: OFF');
+  }
+});
+</script>
+</body>
+</html>
